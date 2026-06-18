@@ -1,0 +1,17 @@
+{
+  "name": "Gemma Local Autonomous AI",
+  "short_name": "GemmaLocal",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icons/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}
