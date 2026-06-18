@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemma Local AI Chatbot</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-space { font-family: 'Space Grotesk', sans-serif; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 99px; }
+        .chat-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen flex flex-col antialiased overflow-hidden">
+
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[200px] bg-indigo-500/10 blur-[120px] pointer-events-none rounded-full"></div>
+
+    <header class="glass-panel sticky top-0 z-50 border-b border-slate-800/60 px-4 py-3.5 flex items-center justify-between shadow-lg shadow-slate-950/20">
+        <div class="flex items-center gap-3">
+            <div class="relative w-11 h-11 bg-gradient-to-tr from-indigo-600 via-violet-600 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group">
+                <div class="absolute inset-0.5 bg-slate-900 rounded-[14px] transition-all group-hover:opacity-0 duration-300"></div>
+                <svg class="w-6 h-6 relative z-10 text-indigo-400 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2V4M12 4C7.58172 4 4 7.58172 4 12V14C4 16.2091 5.79086 18 8 18H16C18.2091 18 20 16.2091 20 14V12C20 7.58172 16.4183 4 12 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M9 11H9.01M15 11H15.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M10 14.5C10.5 15 11.2 15.3 12 15.3C12.8 15.3 13.5 15 14 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <rect x="2" y="11" width="2" height="3" rx="1" fill="currentColor"/>
+                    <rect x="20" y="11" width="2" height="3" rx="1" fill="currentColor"/>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-space font-bold text-lg tracking-wide bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">Gemma AI</h1>
+                    <span class="text-[10px] font-mono font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-md uppercase tracking-wider">Local WebLLM</span>
+                </div>
+                <p id="sub-title" class="text-xs text-slate-400 mt-0.5 font-medium">Detecting language...</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <div id="status-badge" class="glass-panel text-xs bg-amber-500/5 text-amber-400 border-amber-500/20 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-inner">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                <span id="status-text" class="font-medium">Initializing...</span>
+            </div>
+        </div>
+    </header>
+
+    <div id="loading-area" class="hidden border-b border-slate-800 bg-slate-900/60 p-4 transition-all duration-300">
+        <div class="max-w-3xl mx-auto">
+            <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-down text-indigo-400 animate-bounce"></i>
+                    <span id="download-label" class="text-xs text-slate-300 font-medium">Caching model weights locally...</span>
+                </div>
+                <span id="download-progress" class="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden p-[1px] border border-slate-700/50">
+                <div id="progress-bar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full w-0 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(99,102,241,0.4)]"></div>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1.5"><i class="fa-solid fa-info-circle mr-1"></i>Hanya diunduh 1x. Selanjutnya berjalan penuh tanpa internet.</p>
+        </div>
+    </div>
+
+    <main id="chat-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 chat-scroll max-w-3xl mx-auto w-full">
+        </main>
+
+    <footer class="p-4 bg-slate-950/80 border-t border-slate-900/60 backdrop-blur-md sticky bottom-0">
+        <div class="max-w-3xl mx-auto">
+            <div class="glass-panel p-2 rounded-2xl border-slate-800 focus-within:border-indigo-500/50 transition-all duration-300 shadow-2xl flex items-center gap-2">
+                <input type="text" id="user-input" disabled
+                    class="flex-1 bg-transparent px-4 py-3 text-sm text-slate-100 focus:outline-none placeholder-slate-500 disabled:cursor-not-allowed"
+                    placeholder="Initializing model engine...">
+                
+                <button id="send-btn" disabled
+                    class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white w-11 h-11 rounded-xl transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none shadow-lg shadow-indigo-600/20 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-arrow-up text-sm"></i>
+                </button>
+            </div>
+            <div class="text-center mt-2">
+                <p class="text-[10px] text-slate-600 font-medium tracking-wide">100% Privacy Protected &bull; Secured Local WebGPU Inference</p>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module">
+        import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+        const userLang = navigator.language || navigator.userLanguage;
+        const isID = userLang.startsWith('id');
+
+        const i18n = {
+            id: {
+                subtitle: "Berjalan 100% lokal di HP Anda",
+                statusInit: "Menyiapkan Mesin...",
+                statusLoading: "Mengunduh Model...",
+                statusReady: "Gemma Siap Offline",
+                statusThinking: "Gemma sedang berpikir...",
+                placeholderReady: "Tanya apa saja ke Gemma...",
+                placeholderWait: "Harap tunggu, sedang menyiapkan...",
+                welcome: "Halo! Saya Gemma. Saya berjalan sepenuhnya di browser Anda secara offline tanpa API. Ada yang bisa saya bantu hari ini?",
+                modelLabel: "Mengunduh data model ke memori lokal..."
+            },
+            en: {
+                subtitle: "Running 100% locally on your device",
+                statusInit: "Initializing Engine...",
+                statusLoading: "Downloading Model...",
+                statusReady: "Gemma Ready Offline",
+                statusThinking: "Gemma is thinking...",
+                placeholderReady: "Ask Gemma anything...",
+                placeholderWait: "Please wait, initializing...",
+                welcome: "Hello! I am Gemma. I run completely in your browser offline without any API. How can I help you today?",
+                modelLabel: "Caching model weights locally..."
+            }
+        };
+
+        const lang = isID ? i18n.id : i18n.en;
+
+        document.getElementById('sub-title').innerText = lang.subtitle;
+        document.getElementById('status-text').innerText = lang.statusInit;
+        document.getElementById('user-input').placeholder = lang.placeholderWait;
+        document.getElementById('download-label').innerText = lang.modelLabel;
+
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const statusBadge = document.getElementById('status-badge');
+        const statusText = document.getElementById('status-text');
+        const loadingArea = document.getElementById('loading-area');
+        const progressBar = document.getElementById('progress-bar');
+        const downloadProgress = document.getElementById('download-progress');
+
+        appendMessage('gemma', lang.welcome);
+
+        // Menggunakan model Gemma-2-2b-it teroptimasi WebLLM
+        const selectedModel = "gemma-2-2b-it-q4f16_1-MLC"; 
+        const engine = new webllm.CreateEngine();
+
+        engine.setInitProgressCallback((report) => {
+            if (report.text.includes("Loading model") || report.text.includes("Fetching") || report.text.includes("Loading")) {
+                loadingArea.classList.remove('hidden');
+                statusText.innerText = lang.statusLoading;
+                statusBadge.className = "glass-panel text-xs bg-indigo-500/10 text-indigo-400 border-indigo-500/20 px-3 py-1.5 rounded-xl flex items-center gap-2";
+                
+                const match = report.text.match(/\[(\d+)\/(\d+)\]/) || report.text.match(/(\d+)%/);
+                if (match) {
+                    let progress = 0;
+                    if(match[2]) {
+                        progress = Math.round((parseInt(match[1]) / parseInt(match[2])) * 100);
+                    } else {
+                        progress = parseInt(match[1]);
+                    }
+                    progressBar.style.width = `${progress}%`;
+                    downloadProgress.innerText = `${progress}%`;
+                }
+            }
+        });
+
+        async function launchAI() {
+            try {
+                await engine.reload(selectedModel);
+                loadingArea.classList.add('hidden');
+                statusBadge.className = "glass-panel text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/20 px-3 py-1.5 rounded-xl flex items-center gap-2";
+                statusText.innerText = lang.statusReady;
+                
+                const pingDot = statusBadge.querySelector('.animate-ping');
+                if(pingDot) pingDot.remove();
+                
+                userInput.placeholder = lang.placeholderReady;
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+            } catch (err) {
+                statusText.innerText = "WebGPU Unsupported";
+                statusBadge.className = "glass-panel text-xs bg-rose-500/10 text-rose-400 border-rose-500/20 px-3 py-1.5 rounded-xl flex items-center gap-2";
+                userInput.placeholder = "WebGPU not active or available.";
+                console.error(err);
+            }
+        }
+
+        launchAI();
+
+        let contextHistory = [];
+
+        async function processMessage() {
+            const query = userInput.value.trim();
+            if (!query) return;
+
+            appendMessage('user', query);
+            userInput.value = '';
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+            statusText.innerText = lang.statusThinking;
+
+            contextHistory.push({ role: "user", content: query });
+            const botMessageUid = appendMessage('gemma', '● ● ●');
+
+            try {
+                let completeStream = "";
+                const stream = await engine.chat.completions.create({
+                    messages: contextHistory,
+                    stream: true,
+                });
+
+                const targetBubble = document.getElementById(botMessageUid);
+                targetBubble.innerText = "";
+
+                for await (const piece of stream) {
+                    const delta = piece.choices[0]?.delta?.content || "";
+                    completeStream += delta;
+                    targetBubble.innerText = completeStream;
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+
+                contextHistory.push({ role: "assistant", content: completeStream });
+            } catch (error) {
+                console.error(error);
+                document.getElementById(botMessageUid).innerText = "Inference session disrupted.";
+            }
+
+            userInput.disabled = false;
+            sendBtn.disabled = false;
+            statusText.innerText = lang.statusReady;
+            userInput.focus();
+        }
+
+        sendBtn.addEventListener('click', processMessage);
+        userInput.addEventListener('keypress', (event) => { if (event.key === 'Enter') processMessage(); });
+
+        function appendMessage(role, text) {
+            const uid = 'bubble-' + Math.random().toString(36).substring(2, 11);
+            const isUser = role === 'user';
+            
+            const element = `
+                <div class="flex items-start gap-3.5 ${isUser ? 'flex-row-reverse' : ''}">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${isUser ? 'bg-indigo-600 text-white' : 'bg-slate-800 border border-slate-700/60 text-indigo-400'}">
+                        ${isUser ? '<i class="fa-solid fa-user text-xs"></i>' : '<i class="fa-solid fa-robot text-xs text-indigo-400"></i>'}
+                    </div>
+                    <div class="p-3.5 rounded-2xl text-[14px] leading-relaxed max-w-[82%] shadow-sm ${isUser ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-900 border border-slate-800/80 text-slate-200 rounded-tl-none'}">
+                        <p id="${uid}" class="whitespace-pre-line">${text}</p>
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.insertAdjacentHTML('beforeend', element);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return uid;
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(r => console.log('PWA active')).catch(e => console.log('PWA error', e));
+            });
+        }
+    </script>
+</body>
+</html>
